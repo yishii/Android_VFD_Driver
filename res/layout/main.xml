@@ -19,5 +19,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Drawing test" />
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bitmap test" />
+
+    <WebView
+        android:id="@+id/webview1"
+        android:layout_width="fill_parent"
+        android:layout_height="420dp" />
     
 </LinearLayout>
