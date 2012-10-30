@@ -394,7 +394,8 @@ public class VFD_Communication {
 			cmd[5] = (byte) ((X / 256) % 256);
 			cmd[6] = (byte) (Y % 256);
 			cmd[7] = (byte) ((Y / 256) % 256);
-			System.arraycopy(d, 0, cmd, 8, X * Y);
+			cmd[8] = 1;
+			System.arraycopy(d, 0, cmd, 9, X * Y);
 
 			mVFD_Driver.write(cmd);
 		}
