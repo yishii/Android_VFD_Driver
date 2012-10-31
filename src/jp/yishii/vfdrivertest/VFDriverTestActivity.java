@@ -27,13 +27,16 @@ import android.webkit.WebView.PictureListener;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 
-public class VFDriverTestActivity extends Activity implements Runnable {
+public class VFDriverTestActivity extends Activity {
 	private static final String TAG = "VFDriverTestActivity";
 
 	private VFD_Driver mVFD_Driver;
 	private VFD_Communication mVFD_Communication;
 
 	private WebView mWebView;
+
+	private boolean needWebViewUpdate = false;
+	private int siteCount = 0;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -122,19 +125,25 @@ public class VFDriverTestActivity extends Activity implements Runnable {
 					}
 				});
 
-		
 		((Button) findViewById(R.id.button3))
 				.setOnClickListener(new OnClickListener() {
 					@Override
 					public void onClick(View v) {
+						String sites[] = {
+								"http://projectc3.seesaa.net/",
+								"http://livedoor.blogimg.jp/dodone/imgs/5/e/5e4ade6d.PNG",
+								"http://strawberry-linux.com/",
+								"https://github.com/" };
 
 						mVFD_Communication.initialize();
 
-//						mWebView.loadUrl("http://strawberry-linux.com/");
-						//mWebView.loadUrl("http://projectc3.seesaa.net/");
-						mWebView.loadUrl("http://akizukidenshi.com/catalog/default.aspx");
-						
+						mWebView.loadUrl(sites[siteCount++]);
 
+						if (siteCount >= sites.length) {
+							siteCount = 0;
+						}
+
+						needWebViewUpdate = true;
 					}
 				});
 
@@ -143,12 +152,8 @@ public class VFDriverTestActivity extends Activity implements Runnable {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		Log.d(TAG, "onResume");
 
 		mVFD_Communication.open();
-
-		// Thread t = new Thread(this);
-		// t.start();
 	}
 
 	@Override
@@ -163,48 +168,39 @@ public class VFDriverTestActivity extends Activity implements Runnable {
 		@Override
 		@Deprecated
 		public void onNewPicture(WebView view, Picture picture) {
-			Log.d(TAG, "PictureListener#onNewPicture");
+			int[] pixels = new int[256 * 64];
+			int i;
+
+			if (needWebViewUpdate == false) {
+				return;
+			}
 
 			Picture pic = view.capturePicture();
 
 			Bitmap bmp = Bitmap.createBitmap(pic.getWidth(), pic.getHeight(),
 					Bitmap.Config.ARGB_8888);
-
 			Canvas canvas = new Canvas(bmp);
+
 			pic.draw(canvas);
 
-			int[] pixels = new int[256 * 64];
-			int i;
+			bmp.getPixels(pixels, 0, 256, 0, 0, 256, 64);
 
-			bmp.getPixels(pixels, 0, 256,0, 0, 256, 64);
-
-			for (int k=0;k<8;k++){
+			for (int k = 0; k < 8; k++) {
 				byte[] byteBuff = new byte[256];
 
 				for (int x = 0; x < 256; x++) {
-					
+
 					// convert bitmap matrix to VFD image format
-					for (i=0;i<8;i++){
-						byteBuff[x] |= (((pixels[x + 256*i + 256*8*k] & 0xff00) >> 8) > 0x7f ? 1 : 0) << 7-i;
+					for (i = 0; i < 8; i++) {
+						byteBuff[x] |= (((pixels[x + 256 * i + 256 * 8 * k] & 0xff00) >> 8) > 0x7f ? 1
+								: 0) << 7 - i;
 					}
 				}
-	
+
 				mVFD_Communication.cursorSet(0, k);
 				mVFD_Communication.realTimeBitImageDisplay(256, 1, byteBuff);
 			}
-		}
-
-	}
-
-	@Override
-	public void run() {
-		while (true) {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			Log.d(TAG, "in thread...");
+			needWebViewUpdate = false;
 		}
 	}
 
@@ -221,5 +217,4 @@ public class VFDriverTestActivity extends Activity implements Runnable {
 			}
 		}
 	};
-
 }

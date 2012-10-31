@@ -23,13 +23,14 @@ public class VFD_Driver {
 	public static final int READBUF_SIZE = 4096;
 	public static final int WRITEBUF_SIZE = 4096;
 
+	// Noritake ITRON's USB VID/PID
 	private static final int DEVICE_VENDOR_ID = 0x0eda;
 	private static final int DEVICE_PRODUCT_ID = 0x1000;
 
 	private static final int DEVICE_OUT_EPNUM = 0;
 	private static final int DEVICE_IN_EPNUM = 1;
 	
-    private static final int USB_IN_PACKET_SIZE = 64;
+	private static final int USB_IN_PACKET_SIZE = 64;
 
 	private UsbManager mUsbManager;
 	private UsbDevice mUsbDevice;
@@ -40,8 +41,8 @@ public class VFD_Driver {
 	private UsbEndpoint[] mUsbEndpoint_OUT;
 
 	private byte[] mReadbuf = new byte[READBUF_SIZE];
-    private int mReadbufRemain;
-    private int mReadbufOffset;
+	private int mReadbufRemain;
+	private int mReadbufOffset;
 
 	private PendingIntent mPermissionIntent;
 
@@ -61,6 +62,7 @@ public class VFD_Driver {
 	public void usbDetached(Intent intent) {
 		Log.d(TAG,"usbDetached");
 
+		deviceAttached = false;
 		UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
 		String deviceName = device.getDeviceName();
 		if (mUsbDevice != null && mUsbDevice.equals(deviceName)) {
@@ -93,7 +95,6 @@ public class VFD_Driver {
 	    		if(getUsbInterfaces(dev)) {
 	    			break;
 	    		}
-
 			}
 			
 			driverOpened = true;
@@ -113,20 +114,16 @@ public class VFD_Driver {
 			driverOpened = false;
 			ret = true;
 		}
+		deviceAttached = false;
 
 		return ret;
 	}
 
 	
 	public void getPermission(UsbDevice device) {
-		Log.d(TAG,"getPermission");
-		Log.d(TAG,"device is " + (device != null ? "not " : "") + "null");
-		Log.d(TAG,"mPermissionIntent is " + (mPermissionIntent != null ? "not " : "") + "null");
 
 		if (device != null && mPermissionIntent != null) {
-			Log.d(TAG,"getPermission 2");
 			if (!mUsbManager.hasPermission(device)) {
-				Log.d(TAG,"getPermission 3");
 				mUsbManager.requestPermission(device, mPermissionIntent);
 			}
 		}
@@ -147,8 +144,6 @@ public class VFD_Driver {
 			intf = findUSBInterfaceByVIDPID(device,DEVICE_VENDOR_ID,DEVICE_PRODUCT_ID);
 			setUSBInterface(device,intf[0]);
 
-			Log.d(TAG,"intf[0]="+intf[0]);
-			
 			/*
 				Log.d(TAG,"getEndpointCount = " + intf[0].getEndpointCount());
 				for(int i=0;i<intf[0].getEndpointCount();i++){
@@ -165,8 +160,6 @@ public class VFD_Driver {
 				deviceAttached = true;
 				ret = true;
 				Log.d(TAG,"getUsbInterfaces : deviceAttached = true");
-			} else {
-				Log.d(TAG,"getUsbInterfaces : detected NULL");
 			}
 		}
 
@@ -188,9 +181,7 @@ public class VFD_Driver {
 		if (device != null && intf != null) {
 			UsbDeviceConnection connection = mUsbManager.openDevice(device);
 			if (connection != null) {
-				Log.d(TAG, "open succeeded");
 				if (connection.claimInterface(intf, false)) {
-					Log.d(TAG, "claim interface succeeded");
 
 					if ((device.getVendorId() == DEVICE_VENDOR_ID)
 							&& (device.getProductId() == DEVICE_PRODUCT_ID)) {
@@ -201,11 +192,8 @@ public class VFD_Driver {
 					}
 				}
 			} else {
-				Log.d(TAG, "claim interface failed");
 				connection.close();
 			}
-		} else {
-			Log.d(TAG, "open failed");
 		}
 
 		return false;
@@ -214,6 +202,11 @@ public class VFD_Driver {
     // TODO: BUG : sometimes miss data transfer
     public int read(byte[] buf) {
 
+		if(!deviceAttached){
+			Log.d(TAG,"Device is not attached");
+			return(-1);
+		}
+    	
     	if (buf.length <= mReadbufRemain) {
 //        	System.arraycopy(mReadbuf, mReadbufOffset, buf, 0, buf.length);
         	for (int i=0; i<buf.length; i++ ) {
@@ -276,6 +269,11 @@ public class VFD_Driver {
     	int offset = 0;
     	int actual_length;
 		byte[] write_buf = new byte[WRITEBUF_SIZE];
+		
+		if(!deviceAttached){
+			Log.d(TAG,"Device is not attached");
+			return(-1);
+		}
     	
     	while(offset < length) {
     		int write_size = WRITEBUF_SIZE;
@@ -298,7 +296,10 @@ public class VFD_Driver {
 		return offset;
     }
 
-	
+	public boolean isDeviceAttached(){
+		return(deviceAttached);
+	}
+    
     private UsbInterface[] findUSBInterfaceByVIDPID(UsbDevice device,int vid, int pid) {
         UsbInterface[] retIntf = new UsbInterface[1];
         int j=0;
@@ -315,5 +316,5 @@ public class VFD_Driver {
         }
         return retIntf;
     }
-	
+    
 }
